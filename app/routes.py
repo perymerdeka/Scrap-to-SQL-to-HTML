@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, g, flash
 from flask_login import login_user, login_required, logout_user, current_user
-from .forms import LoginForm
+from .forms import LoginForm, RegistrationForm
 from .models import User
 from .db import pool
 import mysql.connector
@@ -97,3 +97,22 @@ def login():
 def logout():
     logout_user()
     return redirect(url_for('main.login'))
+
+@main.route('/register', methods=['GET', 'POST'])
+def register():
+    form = RegistrationForm()
+    if form.validate_on_submit():
+        username = form.username.data
+        password = form.password.data
+        try:
+            connection = pool.get_connection()
+            cursor = connection.cursor(dictionary=True)
+            cursor.execute("INSERT INTO users (username, password) VALUES (%s, %s)", (username, password))
+            connection.commit()
+            cursor.close()
+            connection.close()
+            flash('You have successfully registered! Please log in.', 'success')
+            return redirect(url_for('main.login'))
+        except mysql.connector.Error as err:
+            flash(f"Error: {err}", 'danger')
+    return render_template('register.html', form=form)
